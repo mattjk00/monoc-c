@@ -128,18 +128,6 @@ AudioResult isRealStereo(AudioFile<double> *w) {
     return result;
 }
 
-/*std::string loadText(std::string path) {
-    std::ifstream t(path);
-    std::string text((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-    t.close();
-    return text;
-}*/
-
-/*string a(string x) {
-    printf("\n\n%s\n", x.c_str());
-    return "";
-}*/
-
 /**
  * Cleans a file name by removing the full directory.
  * Example: /User/Albums/Doolittle/debaser.wav --> debaser.wav
