@@ -1,4 +1,2 @@
 *.wav
 /.vscode
-/publish
-./monoc-c
