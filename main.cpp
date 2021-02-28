@@ -10,6 +10,9 @@
 #include <fstream>
 #include <streambuf>
 #include <regex>
+#include <thread>
+#include <future>
+#include <mutex>
 using std::string;
 using std::vector;
 // Degree of accuracy for comparing floats
@@ -21,13 +24,13 @@ const double EPSILON = 0.0001;
 
 // Represents a UI button on the screen
 struct Button {
-    string text;
     Vector2 position;
     Vector2 size;
     bool clicked;
     bool hovered;
     bool enabled;
     Color color;
+    bool changeMade;
 };
 
 // A result for processing an audio file.
@@ -40,9 +43,9 @@ enum AudioResult {
 /**
  * Draws a given button to the screen
  */
-void drawButton(Button b) {
+void drawButton(Button b, string text) {
     DrawRectangle(b.position.x, b.position.y, b.size.x, b.size.y, b.color);
-    DrawText(b.text.c_str(), b.position.x + 5, b.position.y + b.size.y/2, b.size.y/2, RAYWHITE);
+    DrawText(text.c_str(), b.position.x + 5, b.position.y + b.size.y/2, b.size.y/2, RAYWHITE);
 }
 
 /**
@@ -59,6 +62,8 @@ Button handleMouse(Button b) {
     bool h = (mx > bx && mx < bx + b.size.x && my > by && my < by + b.size.y);
     // Set hover color
     b.color = h ? RAYDARKBLUE : RAYBLUE;
+    b.changeMade = b.hovered != h;
+    b.hovered = h;
     // Check if clicked
     b.clicked = (h && IsMouseButtonPressed(MouseButton::MOUSE_LEFT_BUTTON));
     // Set properties for a disabled button
@@ -189,6 +194,79 @@ int processAll(vector<string> files, string savePath) {
     return numFakeStereo;
 }
 
+class AppState {
+public:
+    // Setup the buttons for the GUI
+    Button loadButton = { {10, 100}, {150, 50}, false, false, true};
+    Button saveButton = { {10, 170}, {300, 50}, false, false, true};
+    Button processButton = { {10, 300}, {150, 50}, false, false, false};
+    Button resetButton = {  {300, 0}, {100, 25}, false, false, true};
+    
+
+    // Data for the app
+    vector<string> files; // Stores audio files from file picker
+    string savePath; // Stores save path from folder picker
+    int numFake = -1; // Number of fakes found after the process completes.
+    bool closingApp = false;
+    bool processing = false;
+};
+std::mutex mtx;
+
+int buttonThread(AppState& state) {
+    
+    
+    while (true) {
+        mtx.lock();
+
+        // Handle mouse and button interactions.
+        state.loadButton = handleMouse(state.loadButton);
+        state.saveButton = handleMouse(state.saveButton);
+        state.processButton = handleMouse(state.processButton);
+        state.resetButton = handleMouse(state.resetButton);
+
+        // Handle when load button is clicked.
+        if (state.loadButton.clicked) {
+            state.files = showOpenDialog();
+            // Disable the load button if any files are chosen
+            state.loadButton.enabled = state.files.empty();
+        }
+
+        // Handle when save button is clicked.
+        if (state.saveButton.clicked) {
+            state.savePath = showSaveDialog();
+            // Disable the button if any path is chosen.
+            state.saveButton.enabled = state.savePath.empty();
+        }
+
+        // When files and a save path have been chosen, enable processing option.
+        if (state.files.size() > 0 && state.savePath.empty() == false && !state.loadButton.enabled && !state.saveButton.enabled) {
+            state.processButton.enabled = true;
+        }
+        // Process all files if process button clicked
+        if (state.processButton.clicked) {
+            state.processButton.enabled = false;
+            state.processing = true;
+            state.numFake = processAll(state.files, state.savePath);
+            state.processing = false;
+        }
+
+        // Reset app data if the reset button is clicked.
+        if (state.resetButton.clicked) {
+            state.processButton.enabled = false;
+            state.saveButton.enabled = true;
+            state.loadButton.enabled = true;
+            state.numFake = -1;
+            state.files.clear();
+            state.savePath = "";
+        }
+        if (state.closingApp) {
+            break;
+        }
+        mtx.unlock();
+    }
+    return 0;
+}
+
 
 int main(void)
 {
@@ -196,93 +274,61 @@ int main(void)
     const int screenWidth = 400;
     const int screenHeight = 400;
     InitWindow(screenWidth, screenHeight, "Mono Catcher");
-    SetTargetFPS(300);
+    SetTargetFPS(60);
     
-    // Setup the buttons for the GUI
-    Button loadButton = { "Load Files...", {10, 100}, {150, 50}, false, false};
-    loadButton.enabled = true;
-    Button saveButton = { "Choose Save Folder...", {10, 170}, {300, 50}, false, false};
-    saveButton.enabled = true;
-    Button processButton = { "Process!", {10, 300}, {150, 50}, false, false};
-    processButton.enabled = false;
-    Button resetButton = { "Reset", {300, 0}, {100, 25}, false, false};
-    resetButton.enabled = true;
+    AppState state;
+    
+    auto ui_thread = std::async(buttonThread, std::ref(state));
+    
+    int dotCount = 0;
 
-    // Data for the app
-    vector<string> files; // Stores audio files from file picker
-    string savePath; // Stores save path from folder picker
-    int numFake = -1; // Number of fakes found after the process completes.
-    
     // Window loop
     while (!WindowShouldClose())
     {
+        
         BeginDrawing();
+        //mtx.lock();
         ClearBackground(RAYWHITE);
 
         // Display message for number of files chosen.
-        if (files.size() > 0) {
-            string msg = "Files chosen: " + std::to_string(files.size());
+        if (state.files.size() > 0) {
+            string msg = "Files chosen: " + std::to_string(state.files.size());
             DrawText(msg.c_str(), 200, 105, 24, BLACK);
         }
         // Display message for save directory chosen.
-        if (savePath.empty() == false) {
-            DrawText(savePath.c_str(), 10, 250, 12, BLACK);
+        if (state.savePath.empty() == false) {
+            DrawText(state.savePath.c_str(), 10, 250, 12, BLACK);
         }
         // Display message for number of fake files found
-        if (numFake > -1) {
-            string msg = std::to_string(numFake) + " fake stereo files converted to mono.";
+        if (state.numFake > -1) {
+            string msg = std::to_string(state.numFake) + " fake stereo files converted to mono.";
             DrawText(msg.c_str(), 10, 375, 18, DARKGREEN);
         }
         // Draw main UI components.
         DrawText("Mono Catcher", 15, 15, 20, BLACK);
-        drawButton(loadButton);
-        drawButton(saveButton);
-        drawButton(processButton);
-        drawButton(resetButton);
-
-        // Handle mouse and button interactions.
-        loadButton = handleMouse(loadButton);
-        saveButton = handleMouse(saveButton);
-        processButton = handleMouse(processButton);
-        resetButton = handleMouse(resetButton);
-
-        // Handle when load button is clicked.
-        if (loadButton.clicked) {
-            files = showOpenDialog();
-            // Disable the load button if any files are chosen
-            loadButton.enabled = files.empty();
+        drawButton(state.loadButton, "Load files...");
+        drawButton(state.saveButton, "Choose Save Folder...");
+        drawButton(state.processButton, "Process!");
+        drawButton(state.resetButton, "Reset");
+        
+        // Draw a little label for when it's processing.
+        if (state.processing) {
+            dotCount++;
+            if (dotCount > 5) {
+                dotCount = 0;
+            }
+            string msg = "Processing";
+            for (int i = 0; i < dotCount; i++) {
+                msg += ".";
+            }
+            DrawText(msg.c_str(), 15, 370, 20, BLUE);
         }
-
-        // Handle when save button is clicked.
-        if (saveButton.clicked) {
-            savePath = showSaveDialog();
-            // Disable the button if any path is chosen.
-            saveButton.enabled = savePath.empty();
-        }
-
-        // When files and a save path have been chosen, enable processing option.
-        if (files.size() > 0 && savePath.empty() == false && !loadButton.enabled && !saveButton.enabled) {
-            processButton.enabled = true;
-        }
-        // Process all files if process button clicked
-        if (processButton.clicked) {
-            processButton.enabled = false;
-            numFake = processAll(files, savePath);
-        }
-
-        // Reset app data if the reset button is clicked.
-        if (resetButton.clicked) {
-            processButton.enabled = false;
-            saveButton.enabled = true;
-            loadButton.enabled = true;
-            numFake = -1;
-            files.clear();
-            savePath = "";
-        }
-
-        EndDrawing();
+        
+        EndDrawing(); 
     }
-
+    state.closingApp = true;
+    ui_thread.wait();
+    
     CloseWindow();
     return 0;
 }

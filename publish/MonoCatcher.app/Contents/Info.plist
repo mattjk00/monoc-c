@@ -6,6 +6,7 @@
       <string>monoc-c</string>
       <key>CFBundleName</key>
       <string>Mono Catcher</string>
-
+      <key>CFBundleIconFile</key>
+      <string>icon</string>
     </dict>
 </plist>
