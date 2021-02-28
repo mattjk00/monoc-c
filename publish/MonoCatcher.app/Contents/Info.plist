@@ -7,6 +7,6 @@
       <key>CFBundleName</key>
       <string>Mono Catcher</string>
       <key>CFBundleIconFile</key>
-      <string>icon</string>
+      <string>icon.icns</string>
     </dict>
 </plist>
