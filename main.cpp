@@ -13,6 +13,8 @@
 #include <mutex>
 using std::string;
 using std::vector;
+using std::mutex;
+std::mutex mtx;
 
 // Some other constants for ui colors
 #define RAYBLUE (Color){ 10, 50, 200, 255 }
@@ -50,7 +52,7 @@ Button handleMouse(Button b) {
     // Check if mouse is within the button's bounds
     bool h = (mx > bx && mx < bx + b.size.x && my > by && my < by + b.size.y);
     // Set hover color
-    b.color = h ? RAYDARKBLUE : RAYBLUE;
+    b.color = h ? DARKBLUE : BLUE;
     b.changeMade = b.hovered != h;
     b.hovered = h;
     // Check if clicked
@@ -81,7 +83,7 @@ public:
     bool closingApp = false;
     bool processing = false;
 };
-std::mutex mtx;
+
 
 int buttonThread(AppState& state) {
     

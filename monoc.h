@@ -1,8 +1,12 @@
 #pragma once
 #include "include/AudioFile.h"
-#include "include/pfd.h"
+//#include "include/pfd.h"
+#include "include/tinyfiledialogs.h"
+#include <string>
 // Degree of accuracy for comparing floats
 const double EPSILON = 0.0001;
+using std::vector;
+using std::string;
 
 // A result for processing an audio file.
 enum AudioResult {
@@ -54,9 +58,20 @@ AudioResult isRealStereo(AudioFile<double> *w) {
  * Opens an Open File Dialog and returns a list of file paths selected.
  */ 
 vector<string> showOpenDialog() {
-    auto selection = pfd::open_file("Select a file", ".",
+    /*auto selection = pfd::open_file("Select a file", ".",
                                 { "Wave Files", "*.wav" },
-                                pfd::opt::multiselect).result();
+                                pfd::opt::multiselect).result();*/
+    char const * filter[1] = {"*.wav"};
+    auto result = tinyfd_openFileDialog("Select Wave File(s)", "", 0, filter, "Wave Files", true);
+    string str_result(result);
+    vector<string> selection;
+    int del_index = str_result.find("|");
+    do {
+        auto one_file = str_result.substr(0, del_index);
+        selection.push_back(one_file);
+        str_result = str_result.substr(del_index, str_result.length());
+        del_index = str_result.find("|");
+    } while(del_index != std::string::npos);
     return selection;
 }
 
@@ -64,7 +79,10 @@ vector<string> showOpenDialog() {
  * Opens a Choose Folder Dialog and returns the path of the folder chosen.
  */
 string showSaveDialog() {
-    string selection = pfd::select_folder("Select a folder to save.").result();
+    //string selection = pfd::select_folder("Select a folder to save.").result();
+    string selection(
+        tinyfd_selectFolderDialog("Select a folder to save.", "")
+    );
     return selection;
 }
 
