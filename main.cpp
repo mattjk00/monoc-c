@@ -9,11 +9,12 @@
 #include <streambuf>
 #include <regex>
 #include <thread>
+//#include "include/mingw-threads/mingw.thread.h"
 #include <future>
 #include <mutex>
 using std::string;
 using std::vector;
-using std::mutex;
+//using std::mutex;
 std::mutex mtx;
 
 // Some other constants for ui colors
@@ -89,7 +90,7 @@ int buttonThread(AppState& state) {
     
     
     while (true) {
-        mtx.lock();
+        //mtx.lock();
 
         // Handle mouse and button interactions.
         state.loadButton = handleMouse(state.loadButton);
@@ -135,7 +136,7 @@ int buttonThread(AppState& state) {
         if (state.closingApp) {
             break;
         }
-        mtx.unlock();
+       // mtx.unlock();
     }
     return 0;
 }
@@ -151,7 +152,7 @@ int main(void)
     
     AppState state;
     
-    auto ui_thread = std::async(buttonThread, std::ref(state));
+    auto ui_thread = std::thread(buttonThread, std::ref(state));
     
     int dotCount = 0;
 
@@ -200,7 +201,7 @@ int main(void)
         EndDrawing(); 
     }
     state.closingApp = true;
-    ui_thread.wait();
+    ui_thread.join();
     
     CloseWindow();
     return 0;

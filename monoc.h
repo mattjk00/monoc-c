@@ -61,17 +61,28 @@ vector<string> showOpenDialog() {
     /*auto selection = pfd::open_file("Select a file", ".",
                                 { "Wave Files", "*.wav" },
                                 pfd::opt::multiselect).result();*/
-    char const * filter[1] = {"*.wav"};
-    auto result = tinyfd_openFileDialog("Select Wave File(s)", "", 0, filter, "Wave Files", true);
-    string str_result(result);
     vector<string> selection;
-    int del_index = str_result.find("|");
-    do {
-        auto one_file = str_result.substr(0, del_index);
-        selection.push_back(one_file);
-        str_result = str_result.substr(del_index, str_result.length());
-        del_index = str_result.find("|");
-    } while(del_index != std::string::npos);
+    char const * filter[1] = {"*.wav"};
+    auto result = tinyfd_openFileDialog("Select Wave File(s)", "", 0, filter, "Wave Files", 1);
+
+    if (result != NULL) {
+        string str_result(result);
+        str_result += "|";
+        auto del_index = str_result.find("|");
+
+        
+            do {
+                
+                auto one_file = str_result.substr(0, del_index);
+                selection.push_back(one_file);
+                printf("%s\n", one_file.c_str());
+                str_result = str_result.substr(del_index+1, str_result.length());
+                del_index = str_result.find("|");
+                
+            } while(del_index != std::string::npos);
+        
+        
+    }
     return selection;
 }
 
@@ -80,10 +91,12 @@ vector<string> showOpenDialog() {
  */
 string showSaveDialog() {
     //string selection = pfd::select_folder("Select a folder to save.").result();
-    string selection(
-        tinyfd_selectFolderDialog("Select a folder to save.", "")
-    );
-    return selection;
+    auto result = tinyfd_selectFolderDialog("Select a folder to save.", "");
+    if (result != NULL) {
+        return string(result);
+    } else {
+        return "";
+    }
 }
 
 /**
@@ -138,7 +151,7 @@ AudioResult processSingle(string file, string savePath) {
  */ 
 int processAll(vector<string> files, string savePath) {
     int numFakeStereo = 0;
-    for (int i = 0; i < files.size(); i++) {
+    for (size_t i = 0; i < files.size(); i++) {
         AudioResult result = processSingle(files[i], savePath);
         if (result == FakeStereo) {
             numFakeStereo++;
