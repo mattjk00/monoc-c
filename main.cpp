@@ -17,6 +17,7 @@ using std::vector;
 //using std::mutex;
 std::mutex mtx;
 
+
 // Some other constants for ui colors
 #define RAYBLUE (Color){ 10, 50, 200, 255 }
 #define RAYDARKBLUE (Color){ 20, 20, 100, 255 }
@@ -141,9 +142,15 @@ int buttonThread(AppState& state) {
     return 0;
 }
 
-
+#ifdef _WIN32
+#include "include/winutil.h"
 int main(void)
 {
+    hideConsole();
+#else
+int main(void) {
+#endif
+
     // Window initialization stuff
     const int screenWidth = 400;
     const int screenHeight = 400;
