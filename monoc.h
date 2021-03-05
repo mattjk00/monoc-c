@@ -63,7 +63,7 @@ vector<string> showOpenDialog() {
                                 pfd::opt::multiselect).result();*/
     vector<string> selection;
     char const * filter[2] = {"*.wav", "*.aiff"};
-    auto result = tinyfd_openFileDialog("Select Audio File(s)", "", 0, filter, "Audio Files", 1);
+    auto result = tinyfd_openFileDialog("Select Audio File(s)", "", 2, filter, "Audio Files", 1);
 
     if (result != NULL) {
         string str_result(result);

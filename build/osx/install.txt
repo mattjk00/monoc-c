@@ -1,0 +1,2 @@
+Uncompress the zip and drag the app into your MacOS Applications folder.
+Enjoy!
