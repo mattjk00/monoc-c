@@ -29,7 +29,7 @@ bool compareFloat(float a, float b) {
  * Returns 'Stereo' if buffer is found to be actually stereo.
  * Returns 'FakeStereo' if buffer is found to have sufficiently identical stereo channels.
  */
-AudioResult isRealStereo(AudioFile<double> *w) {
+AudioResult isRealStereo(AudioFile<float> *w) {
     // Check if already mono
     if (w->isMono()) {
         return Mono;
@@ -119,7 +119,7 @@ string cleanFileName(string file) {
  */ 
 AudioResult processSingle(string file, string savePath) {
     // Load the audio file
-    AudioFile<double> wav;
+    AudioFile<float> wav;
     wav.load(file);
     // Do the stereo checking operation 
     AudioResult result = isRealStereo(&wav);
@@ -138,8 +138,13 @@ AudioResult processSingle(string file, string savePath) {
     if (result != Stereo) {
         wav.setNumChannels(1);
     }
+    AudioFileFormat ff = AudioFileFormat::Wave;
+    if (saveTo.find(".aif") > 0) {
+        ff = AudioFileFormat::Aiff;
+    }
+    
     // Save the processed file.
-    wav.save(saveTo);
+    wav.save(saveTo, ff);
 
     return result;
 }
